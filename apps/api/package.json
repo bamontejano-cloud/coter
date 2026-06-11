@@ -2,6 +2,9 @@
   "name": "@coterapeuta/api",
   "version": "1.0.0",
   "private": true,
+  "prisma": {
+    "schema": "prisma/schema.prisma"
+  },
   "scripts": {
     "dev": "ts-node --project tsconfig.json src/server.ts",
     "build": "tsc --project tsconfig.json",
