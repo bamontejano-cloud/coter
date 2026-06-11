@@ -1,0 +1,143 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  therapist
+  patient
+}
+
+enum AssignmentStatus {
+  pending
+  completed
+}
+
+enum NotificationType {
+  assignment_completed
+}
+
+model User {
+  id           String   @id @default(uuid())
+  fullName     String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  createdAt    DateTime @default(now())
+
+  // therapist side
+  invitations       Invitation[]
+  therapistPatients TherapistPatient[] @relation("Therapist")
+  techniques        Technique[]
+  assignmentsGiven  Assignment[]       @relation("Therapist")
+  sentMessages      Message[]          @relation("Sender")
+  receivedMessages  Message[]          @relation("Receiver")
+  notifications     Notification[]
+
+  // patient side
+  patientTherapists   TherapistPatient[] @relation("Patient")
+  assignmentsReceived Assignment[]       @relation("Patient")
+  records             Record[]
+}
+
+model Invitation {
+  id          String    @id @default(uuid())
+  code        String    @unique
+  therapistId String
+  therapist   User      @relation(fields: [therapistId], references: [id])
+  usedAt      DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+}
+
+model TherapistPatient {
+  id          String   @id @default(uuid())
+  therapistId String
+  patientId   String
+  linkedAt    DateTime @default(now())
+  therapist   User     @relation("Therapist", fields: [therapistId], references: [id])
+  patient     User     @relation("Patient", fields: [patientId], references: [id])
+
+  @@unique([therapistId, patientId])
+}
+
+model Technique {
+  id                  String    @id @default(uuid())
+  therapistId         String
+  therapist           User      @relation(fields: [therapistId], references: [id])
+  title               String    @db.VarChar(120)
+  description         String
+  category            String
+  patientInstructions String?
+  deletedAt           DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  assignments Assignment[]
+}
+
+model Assignment {
+  id             String           @id @default(uuid())
+  techniqueId    String
+  technique      Technique        @relation(fields: [techniqueId], references: [id])
+  patientId      String
+  patient        User             @relation("Patient", fields: [patientId], references: [id])
+  therapistId    String
+  therapist      User             @relation("Therapist", fields: [therapistId], references: [id])
+  therapistNotes String?
+  status         AssignmentStatus @default(pending)
+  assignedAt     DateTime         @default(now())
+
+  record Record?
+}
+
+model Record {
+  id           String     @id @default(uuid())
+  assignmentId String     @unique
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+  patientId    String
+  patient      User       @relation(fields: [patientId], references: [id])
+  response     String
+  submittedAt  DateTime   @default(now())
+}
+
+model Conversation {
+  id          String    @id @default(uuid())
+  therapistId String
+  patientId   String
+  createdAt   DateTime  @default(now())
+  messages    Message[]
+
+  @@unique([therapistId, patientId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  senderId       String
+  sender         User         @relation("Sender", fields: [senderId], references: [id])
+  receiverId     String
+  receiver       User         @relation("Receiver", fields: [receiverId], references: [id])
+  content        String
+  read           Boolean      @default(false)
+  sentAt         DateTime     @default(now())
+}
+
+model Notification {
+  id           String           @id @default(uuid())
+  therapistId  String
+  therapist    User             @relation(fields: [therapistId], references: [id])
+  type         NotificationType
+  patientId    String
+  assignmentId String
+  read         Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+}
