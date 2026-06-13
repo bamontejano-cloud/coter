@@ -3,6 +3,6 @@ builder = "nixpacks"
 buildCommand = "npm install --prefer-offline && cd apps/web && npm run build"
 
 [deploy]
-startCommand = "npx serve -s apps/web/dist --listen $PORT"
+startCommand = "npx serve -s apps/web/dist -l tcp://0.0.0.0:$PORT"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
