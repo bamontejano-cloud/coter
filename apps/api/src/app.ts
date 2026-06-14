@@ -55,6 +55,6 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   if (err instanceof AppError) {
     return res.status(err.status).json({ error: err.code, message: err.message });
   }
-  console.error(err);
+  console.error('Unhandled error:', err);
   return res.status(500).json({ error: 'internal_error', message: 'Error interno del servidor' });
 });
