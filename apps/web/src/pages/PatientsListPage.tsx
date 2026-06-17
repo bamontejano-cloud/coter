@@ -6,6 +6,9 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Alert } from '../components/ui/Alert';
 import { Spinner } from '../components/ui/Spinner';
+import { EmptyState } from '../components/ui/EmptyState';
+import { Avatar } from '../components/ui/Avatar';
+import { Icon } from '../components/ui/Icon';
 import { useToast } from '../components/ui/Toast';
 import type { PatientSummary, InvitationCreateResponse } from '@coterapeuta/shared';
 
@@ -16,10 +19,10 @@ import type { PatientSummary, InvitationCreateResponse } from '@coterapeuta/shar
  * Layout provided by AppShell — this page only renders the body content.
  * Uses the design-system primitives:
  *  - <Card> for the two section panels.
- *  - <Button> for actions, with isLoading for the async generate/save state.
- *  - <Alert> for the sticky page-load error (persistent, near its source).
- *  - <Toast> for transient feedback on the invitation/copy flows
- *    (success + error, sticky for danger per the toast contract).
+ *  - <Button> for actions, with isLoading for the async generate state.
+ *  - <EmptyState> + <Avatar> for the patient-card grid.
+ *  - <Alert> for the sticky page-load error.
+ *  - <Toast> for transient feedback on invitation/copy flows.
  */
 export function PatientsListPage() {
   const toast = useToast();
@@ -48,11 +51,10 @@ export function PatientsListPage() {
       await navigator.clipboard.writeText(link);
       toast.push('Enlace copiado al portapapeles');
     } catch {
-      // Clipboard unavailable in some contexts (e.g. insecure origins).
       toast.push({
         variant: 'warning',
         title: 'No se pudo copiar',
-        message: 'Copiá el enlace manualmente desde el panel de invitación.',
+        message: 'Copialo manualmente desde el panel de invitación.',
       });
     }
   }
@@ -62,7 +64,7 @@ export function PatientsListPage() {
       <header className="page-header">
         <h1>Mis pacientes</h1>
         <p className="page-header__subtitle">
-          Genera un código de invitación para vincular a un nuevo paciente.
+          Generá un código de invitación para vincular a un nuevo paciente.
         </p>
       </header>
 
@@ -116,24 +118,38 @@ export function PatientsListPage() {
           <Alert variant="danger">Error al cargar pacientes</Alert>
         )}
 
-        {patients && patients.length === 0 && (
-          <p className="muted">No tienes pacientes vinculados todavía.</p>
+        {patients && patients.length === 0 && !isLoading && !error && (
+          <EmptyState
+            icon="Users"
+            title="Aún no tenés pacientes vinculados"
+            description="Generá tu primera invitación y compartila con un paciente para empezar a trabajar juntos."
+            action={
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => generateInvitation.mutate()}
+                isLoading={generateInvitation.isPending}
+              >
+                {generateInvitation.isPending
+                  ? 'Generando…'
+                  : 'Generar primera invitación'}
+              </Button>
+            }
+          />
         )}
 
         {patients && patients.length > 0 && (
-          <ul className="patient-list">
+          <ul className="patient-card-grid">
             {patients.map((patient) => (
-              <li key={patient.id} className="patient-list__item">
-                <Link to={`/patients/${patient.id}`} className="patient-list__link">
-                  <span className="patient-list__name">{patient.fullName}</span>
-                  <span className="patient-list__meta">{patient.email}</span>
+              <li key={patient.id}>
+                <Link to={`/patients/${patient.id}`} className="patient-card">
+                  <Avatar name={patient.fullName} size="md" />
+                  <div className="patient-card__info">
+                    <span className="patient-card__name">{patient.fullName}</span>
+                    <span className="patient-card__email">{patient.email}</span>
+                  </div>
+                  <Icon name="ChevronRight" size="sm" className="" />
                 </Link>
-                <span className="patient-list__date">
-                  Vinculado:{' '}
-                  <time dateTime={patient.linkedAt}>
-                    {new Date(patient.linkedAt).toLocaleDateString('es-ES')}
-                  </time>
-                </span>
               </li>
             ))}
           </ul>

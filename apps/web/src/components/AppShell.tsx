@@ -4,6 +4,8 @@ import { useAuthStore } from '../store/authStore';
 import { NotificationDot } from './NotificationDot';
 import { useNotificationStore } from '../store/notificationStore';
 import { useNotifications } from '../hooks/useNotifications';
+import { Icon, IconName } from './ui/Icon';
+import { Avatar } from './ui/Avatar';
 import type { Role } from '@coterapeuta/shared';
 
 /**
@@ -13,23 +15,25 @@ import type { Role } from '@coterapeuta/shared';
 interface NavEntry {
   to: string;
   label: string;
+  icon: IconName;
   roles?: readonly Role[];
 }
 
 const NAV_ENTRIES: readonly NavEntry[] = [
-  { to: '/dashboard', label: 'Inicio' },
-  { to: '/patients', label: 'Mis pacientes', roles: ['therapist'] },
-  { to: '/library', label: 'Biblioteca de técnicas', roles: ['therapist'] },
-  { to: '/assignments', label: 'Mis asignaciones', roles: ['patient'] },
-  { to: '/messages', label: 'Mensajes' },
+  { to: '/dashboard',           label: 'Inicio',                      icon: 'Home'           },
+  { to: '/patients',            label: 'Mis pacientes',              icon: 'Users',          roles: ['therapist'] },
+  { to: '/library',             label: 'Biblioteca de técnicas',     icon: 'BookOpen',       roles: ['therapist'] },
+  { to: '/assignments',         label: 'Mis asignaciones',           icon: 'ClipboardList',  roles: ['patient']   },
+  { to: '/messages',            label: 'Mensajes',                    icon: 'MessageSquare'                     },
 ] as const;
 
 /**
  * Authenticated layout shell.
  *
  * Wraps every page that lives behind <ProtectedRoute />. Provides a sticky
- * header (logo + user menu + logout) and a role-aware sidebar with active
- * link highlighting. The child route renders into <Outlet/> below.
+ * header (brand + user menu + logout) and a role-aware sidebar with active
+ * link highlighting + per-entry icons. The child route renders into
+ * <Outlet/> below.
  *
  * Mobile (<768px by default): sidebar collapses behind a hamburger toggle.
  * Keyboard users get a skip-link that jumps them to <main>.
@@ -56,6 +60,8 @@ export function AppShell() {
     (e) => !e.roles || (user && e.roles.includes(user.role)),
   );
 
+  const roleLabel = user?.role === 'therapist' ? 'Terapeuta' : 'Paciente';
+
   return (
     <div className="app-shell">
       <a href="#main-content" className="skip-link">
@@ -70,11 +76,13 @@ export function AppShell() {
           aria-expanded={sidebarOpen}
           onClick={() => setSidebarOpen((v) => !v)}
         >
-          <span aria-hidden="true">☰</span>
+          <Icon name={sidebarOpen ? 'X' : 'Menu'} size="md" />
         </button>
 
         <Link to="/dashboard" className="app-header__brand" aria-label="Inicio · Coterapeuta">
-          <span className="app-header__brand-mark" aria-hidden="true">C</span>
+          <span className="app-header__brand-mark" aria-hidden="true">
+            <Icon name="Stethoscope" size="sm" />
+          </span>
           <span className="app-header__brand-text">oterapeuta</span>
           {user?.role === 'therapist' && notificationCount > 0 && (
             <NotificationDot count={notificationCount} />
@@ -84,11 +92,14 @@ export function AppShell() {
         <div className="app-header__spacer" />
 
         {user && (
-          <div className="app-header__user">
-            <span className="app-header__user-name">{user.fullName}</span>
-            <span className="app-header__user-role" aria-label={`Rol: ${user.role}`}>
-              {user.role === 'therapist' ? 'Terapeuta' : 'Paciente'}
-            </span>
+          <div className="app-header__user" aria-label={`Sesión iniciada como ${user.fullName}`}>
+            <div className="app-header__user-info">
+              <span className="app-header__user-info-name">{user.fullName}</span>
+              <span className="app-header__user-info-role" aria-label={`Rol: ${roleLabel}`}>
+                {roleLabel}
+              </span>
+            </div>
+            <Avatar name={user.fullName} size="sm" />
           </div>
         )}
 
@@ -98,7 +109,8 @@ export function AppShell() {
           onClick={handleLogout}
           aria-label="Cerrar sesión"
         >
-          Cerrar sesión
+          <Icon name="LogOut" size="sm" />
+          <span className="app-header__logout-text">Cerrar sesión</span>
         </button>
       </header>
 
@@ -119,7 +131,10 @@ export function AppShell() {
                     }
                     onClick={closeSidebar}
                   >
-                    {entry.label}
+                    <span className="app-sidebar__icon" aria-hidden="true">
+                      <Icon name={entry.icon} size="md" />
+                    </span>
+                    <span className="app-sidebar__link-label">{entry.label}</span>
                   </NavLink>
                 </li>
               ))}
