@@ -7,6 +7,8 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
   hint?: ReactNode;
   /** Error message under the input. Marks aria-invalid + adds aria-errormessage. */
   error?: string;
+  /** Visually hide the label (still announced to screen readers). */
+  hideLabel?: boolean;
 }
 
 /**
@@ -21,7 +23,7 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
  *    collide even if the caller forgets to pass an id.
  */
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, hint, error, id, className = '', ...rest },
+  { label, hint, error, id, className = '', hideLabel = false, ...rest },
   ref,
 ) {
   const autoId = useId();
@@ -32,7 +34,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
 
   return (
     <div className="field">
-      <label className="field__label" htmlFor={inputId}>
+      <label
+        className={`field__label${hideLabel ? ' field__label--sr-only' : ''}`}
+        htmlFor={inputId}
+      >
         {label}
       </label>
       <input
