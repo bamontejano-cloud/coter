@@ -78,8 +78,8 @@ export function Avatar({
   style,
   ...rest
 }: AvatarProps) {
-  const [, hi] = GRADIENTS[gradientIndex ?? pickIndex(name)];
-  const [from, to] = GRADIENTS[gradientIndex ?? pickIndex(name)] as readonly [string, string];
+  const idx = gradientIndex ?? pickIndex(name);
+  const [from, to] = GRADIENTS[idx];
   const initialsText = initials(name);
   const sizePx = SIZE_PX[size];
   const fontPx = FONTSIZE_PX[size];

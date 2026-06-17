@@ -1,15 +1,28 @@
 import { useState, FormEvent, useRef, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../store/authStore';
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { Alert } from '../components/ui/Alert';
+import { Spinner } from '../components/ui/Spinner';
+import { EmptyState } from '../components/ui/EmptyState';
+import { Input } from '../components/ui/Input';
 import { MessageBubble } from '../components/MessageBubble';
+import { Icon } from '../components/ui/Icon';
 import { api } from '../lib/apiClient';
 import type { ChatMessage } from '@coterapeuta/shared';
 
+/**
+ * Single conversation thread. Polls every 10s so the other party's reply
+ * surfaces without a manual refresh. The form is sticky at the bottom so
+ * the user can keep typing while watching incoming messages.
+ */
 export function ConversationPage() {
   const { conversationId } = useParams<{ conversationId: string }>();
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [content, setContent] = useState('');
   const [sendError, setSendError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -44,48 +57,87 @@ export function ConversationPage() {
   }
 
   return (
-    <main style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      <header>
-        <Link to="/messages">← Volver a mensajes</Link>
-        <h1>Conversación</h1>
-      </header>
+    <div className="conversation">
+      <Card padding="sm" className="conversation__header" aria-label="Encabezado de conversación">
+        <Button
+          variant="ghost"
+          className="conversation__back"
+          onClick={() => navigate('/messages')}
+          aria-label="Volver a mensajes"
+        >
+          <Icon name="ChevronLeft" size="sm" />
+          Mensajes
+        </Button>
+        <div className="conversation__head-info">
+          <span className="conversation__head-avatar" aria-hidden="true">
+            <Icon name="MessageSquare" size="md" />
+          </span>
+          <div className="conversation__head-text">
+            <h1 className="conversation__head-title">Conversación</h1>
+            <p className="conversation__head-subtitle">
+              ID <code>{conversationId ?? '—'}</code>
+            </p>
+          </div>
+        </div>
+      </Card>
 
-      <section
-        aria-label="Mensajes de la conversación"
-        style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}
-      >
-        {isLoading && <p>Cargando mensajes…</p>}
-        {messages?.map((msg) => (
-          <MessageBubble
-            key={msg.id}
-            content={msg.content}
-            sentAt={msg.sentAt}
-            isMine={msg.senderId === user?.id}
+      <Card padding="md" className="conversation__thread" aria-label="Mensajes de la conversación">
+        {isLoading && (
+          <div className="page-state">
+            <Spinner size="lg" label="Cargando mensajes…" />
+            <p className="page-state__hint">Cargando mensajes…</p>
+          </div>
+        )}
+
+        {!isLoading && messages && messages.length === 0 && (
+          <EmptyState
+            icon="MessageSquare"
+            title="Sin mensajes todavía"
+            description="Enviá el primero abajo para abrir la conversación."
           />
-        ))}
-        <div ref={bottomRef} />
-      </section>
+        )}
+
+        {messages && messages.length > 0 && (
+          <div className="conversation__messages" role="log" aria-live="polite">
+            {messages.map((msg) => (
+              <MessageBubble
+                key={msg.id}
+                content={msg.content}
+                sentAt={msg.sentAt}
+                isMine={msg.senderId === user?.id}
+              />
+            ))}
+            <div ref={bottomRef} />
+          </div>
+        )}
+      </Card>
 
       <form
         onSubmit={handleSubmit}
-        style={{ padding: '1rem', borderTop: '1px solid #e5e7eb', display: 'flex', gap: '0.5rem' }}
+        className="conversation__form"
         aria-label="Enviar mensaje"
       >
-        {sendError && <p role="alert" style={{ color: 'red', width: '100%' }}>{sendError}</p>}
-        <label htmlFor="message-input" style={{ display: 'none' }}>Nuevo mensaje</label>
-        <input
-          id="message-input"
-          type="text"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Escribe un mensaje…"
-          style={{ flex: 1 }}
-          aria-label="Escribe tu mensaje"
-        />
-        <button type="submit" disabled={sendMutation.isPending}>
-          {sendMutation.isPending ? 'Enviando…' : 'Enviar'}
-        </button>
+        {sendError && (
+          <Alert variant="danger" title="No se pudo enviar el mensaje">
+            {sendError}
+          </Alert>
+        )}
+        <div className="conversation__form-row">
+          <Input
+            id="message-input"
+            label="Nuevo mensaje"
+            hideLabel
+            type="text"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Escribí un mensaje…"
+          />
+          <Button type="submit" variant="primary" isLoading={sendMutation.isPending}>
+            <Icon name="Send" size="sm" />
+            {sendMutation.isPending ? 'Enviando…' : 'Enviar'}
+          </Button>
+        </div>
       </form>
-    </main>
+    </div>
   );
 }
