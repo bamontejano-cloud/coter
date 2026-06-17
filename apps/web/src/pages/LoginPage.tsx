@@ -2,12 +2,19 @@ import { useState, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/apiClient';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { Alert } from '../components/ui/Alert';
 import type { AuthResponse } from '@coterapeuta/shared';
 
 /**
- * Pre-auth screen. Centered card layout (`.auth-screen`) so the visual rhythm
- * matches the rest of the app. No AppShell here — there is no logged-in
- * session to render a header for.
+ * Pre-auth screen. Centered card layout (`.auth-screen`) with the visual
+ * rhythm shared by RegisterPage. Uses the design-system components:
+ *  - <Input> for the form fields (label + a11y wired automatically)
+ *  - <Button> with isLoading for the submit (Spinner replaces the label)
+ *  - <Alert> for sticky error display with a manual dismiss ✕
+ *
+ * No AppShell here — no logged-in session means no header/sidebar.
  */
 export function LoginPage() {
   const navigate = useNavigate();
@@ -38,46 +45,37 @@ export function LoginPage() {
         className="auth-screen__card"
         onSubmit={handleSubmit}
         aria-label="Formulario de inicio de sesión"
+        noValidate
       >
         <h1>Iniciar sesión</h1>
 
         {error && (
-          <p role="alert" aria-live="assertive" className="alert alert--danger">
+          <Alert variant="danger" onDismiss={() => setError(null)}>
             {error}
-          </p>
+          </Alert>
         )}
 
-        <div className="auth-screen__field">
-          <label htmlFor="email">Correo electrónico</label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-          />
-        </div>
+        <Input
+          label="Correo electrónico"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+        />
 
-        <div className="auth-screen__field">
-          <label htmlFor="password">Contraseña</label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-          />
-        </div>
+        <Input
+          label="Contraseña"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          autoComplete="current-password"
+        />
 
-        <button
-          type="submit"
-          className="button button--primary auth-screen__submit"
-          disabled={loading}
-        >
+        <Button type="submit" variant="primary" fullWidth isLoading={loading}>
           {loading ? 'Cargando…' : 'Entrar'}
-        </button>
+        </Button>
 
         <p className="auth-screen__footer">
           ¿No tienes cuenta? <Link to="/register">Registrarse</Link>

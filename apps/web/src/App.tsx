@@ -14,13 +14,15 @@ import { MessagesListPage } from './pages/MessagesListPage';
 import { ConversationPage } from './pages/ConversationPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppShell } from './components/AppShell';
+import { ToastProvider } from './components/ui/Toast';
 
 const queryClient = new QueryClient();
 
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <ToastProvider>
+        <BrowserRouter>
         <Routes>
           {/* Unauthenticated pages — no shell. */}
           <Route path="/login" element={<LoginPage />} />
@@ -60,7 +62,8 @@ export function App() {
 
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
-      </BrowserRouter>
+        </BrowserRouter>
+      </ToastProvider>
     </QueryClientProvider>
   );
 }

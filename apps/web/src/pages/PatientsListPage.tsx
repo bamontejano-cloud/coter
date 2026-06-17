@@ -2,6 +2,11 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '../lib/apiClient';
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { Alert } from '../components/ui/Alert';
+import { Spinner } from '../components/ui/Spinner';
+import { useToast } from '../components/ui/Toast';
 import type { PatientSummary, InvitationCreateResponse } from '@coterapeuta/shared';
 
 /**
@@ -9,23 +14,30 @@ import type { PatientSummary, InvitationCreateResponse } from '@coterapeuta/shar
  * code that a new patient can use to register and link up.
  *
  * Layout provided by AppShell — this page only renders the body content.
+ * Uses the design-system primitives:
+ *  - <Card> for the two section panels.
+ *  - <Button> for actions, with isLoading for the async generate/save state.
+ *  - <Alert> for the sticky page-load error (persistent, near its source).
+ *  - <Toast> for transient feedback on the invitation/copy flows
+ *    (success + error, sticky for danger per the toast contract).
  */
 export function PatientsListPage() {
+  const toast = useToast();
   const { data: patients, isLoading, error } = useQuery<PatientSummary[]>({
     queryKey: ['patients'],
     queryFn: () => api.get<PatientSummary[]>('/patients'),
   });
   const [invitationCode, setInvitationCode] = useState<string | null>(null);
-  const [invitationError, setInvitationError] = useState<string | null>(null);
 
   const generateInvitation = useMutation({
     mutationFn: () => api.post<InvitationCreateResponse>('/invitations'),
     onSuccess: (data) => {
       setInvitationCode(data.code);
-      setInvitationError(null);
+      toast.push({ variant: 'success', message: `Invitación generada: ${data.code}` });
     },
-    onError: () => {
-      setInvitationError('No se pudo generar la invitación');
+    onError: (err: unknown) => {
+      const message = err instanceof Error ? err.message : 'No se pudo generar la invitación';
+      toast.push({ variant: 'danger', message });
     },
   });
 
@@ -34,8 +46,14 @@ export function PatientsListPage() {
     const link = `${window.location.origin}/register/${invitationCode}`;
     try {
       await navigator.clipboard.writeText(link);
+      toast.push('Enlace copiado al portapapeles');
     } catch {
-      // Clipboard unavailable in some contexts — degradation: leave the link visible.
+      // Clipboard unavailable in some contexts (e.g. insecure origins).
+      toast.push({
+        variant: 'warning',
+        title: 'No se pudo copiar',
+        message: 'Copiá el enlace manualmente desde el panel de invitación.',
+      });
     }
   }
 
@@ -48,54 +66,54 @@ export function PatientsListPage() {
         </p>
       </header>
 
-      <section className="panel" aria-label="Generar invitación">
-        <button
-          type="button"
-          className="button button--primary"
-          onClick={() => generateInvitation.mutate()}
-          disabled={generateInvitation.isPending}
-        >
-          {generateInvitation.isPending ? 'Generando…' : 'Generar invitación'}
-        </button>
-
-        {invitationCode && (
+      <Card
+        as="section"
+        aria-label="Generar invitación"
+        actions={
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => generateInvitation.mutate()}
+            isLoading={generateInvitation.isPending}
+          >
+            {generateInvitation.isPending ? 'Generando…' : 'Generar invitación'}
+          </Button>
+        }
+      >
+        {invitationCode ? (
           <div className="invitation-result" role="status" aria-live="polite">
             <p className="invitation-result__label">Código de invitación:</p>
             <code className="invitation-result__code">{invitationCode}</code>
             <p className="invitation-result__label">Enlace de registro:</p>
-            <Link
-              to={`/register/${invitationCode}`}
-              className="invitation-result__link"
-            >
+            <Link to={`/register/${invitationCode}`} className="invitation-result__link">
               {window.location.origin}/register/{invitationCode}
             </Link>
-            <button
-              type="button"
-              className="button button--ghost"
-              onClick={copyInvitationLink}
-            >
-              Copiar enlace
-            </button>
+            <div>
+              <Button type="button" variant="ghost" onClick={copyInvitationLink}>
+                Copiar enlace
+              </Button>
+            </div>
           </div>
-        )}
-
-        {invitationError && (
-          <p role="alert" className="alert alert--danger">
-            {invitationError}
+        ) : (
+          <p className="muted">
+            Generá un código y compartilo con tu paciente para que pueda registrarse.
           </p>
         )}
-      </section>
+      </Card>
 
-      <section aria-labelledby="patients-list-title" className="panel">
-        <h2 id="patients-list-title" className="panel__title">
+      <Card as="section" aria-labelledby="patients-list-title">
+        <h2 id="patients-list-title" className="card__title">
           Pacientes vinculados
         </h2>
 
-        {isLoading && <p className="muted">Cargando pacientes…</p>}
-        {error && (
-          <p role="alert" className="alert alert--danger">
-            Error al cargar pacientes
+        {isLoading && (
+          <p className="muted" role="status" aria-live="polite">
+            <Spinner size="sm" label="" /> Cargando pacientes…
           </p>
+        )}
+
+        {error && (
+          <Alert variant="danger">Error al cargar pacientes</Alert>
         )}
 
         {patients && patients.length === 0 && (
@@ -120,7 +138,7 @@ export function PatientsListPage() {
             ))}
           </ul>
         )}
-      </section>
+      </Card>
     </>
   );
 }
