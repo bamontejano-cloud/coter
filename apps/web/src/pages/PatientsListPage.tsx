@@ -4,6 +4,12 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '../lib/apiClient';
 import type { PatientSummary, InvitationCreateResponse } from '@coterapeuta/shared';
 
+/**
+ * Therapist-only patient list. Lets the therapist generate an invitation
+ * code that a new patient can use to register and link up.
+ *
+ * Layout provided by AppShell — this page only renders the body content.
+ */
 export function PatientsListPage() {
   const { data: patients, isLoading, error } = useQuery<PatientSummary[]>({
     queryKey: ['patients'],
@@ -23,53 +29,98 @@ export function PatientsListPage() {
     },
   });
 
+  async function copyInvitationLink() {
+    if (!invitationCode) return;
+    const link = `${window.location.origin}/register/${invitationCode}`;
+    try {
+      await navigator.clipboard.writeText(link);
+    } catch {
+      // Clipboard unavailable in some contexts — degradation: leave the link visible.
+    }
+  }
+
   return (
-    <main>
-      <h1>Mis pacientes</h1>
-      <button
-        onClick={() => generateInvitation.mutate()}
-        disabled={generateInvitation.isPending}
-        aria-label="Generar código de invitación para nuevo paciente"
-      >
-        {generateInvitation.isPending ? 'Generando…' : 'Generar invitación'}
-      </button>
+    <>
+      <header className="page-header">
+        <h1>Mis pacientes</h1>
+        <p className="page-header__subtitle">
+          Genera un código de invitación para vincular a un nuevo paciente.
+        </p>
+      </header>
 
-      {invitationCode && (
-        <section aria-live="polite">
-          <p>Código de invitación:</p>
-          <code>{invitationCode}</code>
-          <p>
-            Comparte este enlace:{' '}
-            <a href={`/register/${invitationCode}`}>
+      <section className="panel" aria-label="Generar invitación">
+        <button
+          type="button"
+          className="button button--primary"
+          onClick={() => generateInvitation.mutate()}
+          disabled={generateInvitation.isPending}
+        >
+          {generateInvitation.isPending ? 'Generando…' : 'Generar invitación'}
+        </button>
+
+        {invitationCode && (
+          <div className="invitation-result" role="status" aria-live="polite">
+            <p className="invitation-result__label">Código de invitación:</p>
+            <code className="invitation-result__code">{invitationCode}</code>
+            <p className="invitation-result__label">Enlace de registro:</p>
+            <Link
+              to={`/register/${invitationCode}`}
+              className="invitation-result__link"
+            >
               {window.location.origin}/register/{invitationCode}
-            </a>
+            </Link>
+            <button
+              type="button"
+              className="button button--ghost"
+              onClick={copyInvitationLink}
+            >
+              Copiar enlace
+            </button>
+          </div>
+        )}
+
+        {invitationError && (
+          <p role="alert" className="alert alert--danger">
+            {invitationError}
           </p>
-        </section>
-      )}
-      {invitationError && <p role="alert" style={{ color: 'red' }}>{invitationError}</p>}
+        )}
+      </section>
 
-      {isLoading && <p>Cargando pacientes…</p>}
-      {error && <p role="alert" style={{ color: 'red' }}>Error al cargar pacientes</p>}
+      <section aria-labelledby="patients-list-title" className="panel">
+        <h2 id="patients-list-title" className="panel__title">
+          Pacientes vinculados
+        </h2>
 
-      {patients && patients.length === 0 && (
-        <p>No tienes pacientes vinculados todavía.</p>
-      )}
+        {isLoading && <p className="muted">Cargando pacientes…</p>}
+        {error && (
+          <p role="alert" className="alert alert--danger">
+            Error al cargar pacientes
+          </p>
+        )}
 
-      {patients && patients.length > 0 && (
-        <ul aria-label="Lista de pacientes">
-          {patients.map((patient) => (
-            <li key={patient.id}>
-              <Link to={`/patients/${patient.id}`}>
-                <strong>{patient.fullName}</strong>
-              </Link>
-              {' — '}
-              {patient.email}
-              {' — Vinculado: '}
-              {new Date(patient.linkedAt).toLocaleDateString('es-ES')}
-            </li>
-          ))}
-        </ul>
-      )}
-    </main>
+        {patients && patients.length === 0 && (
+          <p className="muted">No tienes pacientes vinculados todavía.</p>
+        )}
+
+        {patients && patients.length > 0 && (
+          <ul className="patient-list">
+            {patients.map((patient) => (
+              <li key={patient.id} className="patient-list__item">
+                <Link to={`/patients/${patient.id}`} className="patient-list__link">
+                  <span className="patient-list__name">{patient.fullName}</span>
+                  <span className="patient-list__meta">{patient.email}</span>
+                </Link>
+                <span className="patient-list__date">
+                  Vinculado:{' '}
+                  <time dateTime={patient.linkedAt}>
+                    {new Date(patient.linkedAt).toLocaleDateString('es-ES')}
+                  </time>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </>
   );
 }

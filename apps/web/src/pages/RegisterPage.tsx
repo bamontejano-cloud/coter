@@ -34,11 +34,17 @@ export function RegisterPage() {
   }
 
   return (
-    <main>
-      <h1>Crear cuenta</h1>
-      <form onSubmit={handleSubmit} aria-label="Formulario de registro">
-        {error && <p role="alert" aria-live="assertive" style={{ color: 'red' }}>{error}</p>}
-        <div>
+    <div className="auth-screen">
+      <form className="auth-screen__card" onSubmit={handleSubmit} aria-label="Formulario de registro">
+        <h1>Crear cuenta</h1>
+
+        {error && (
+          <p role="alert" aria-live="assertive" className="alert alert--danger">
+            {error}
+          </p>
+        )}
+
+        <div className="auth-screen__field">
           <label htmlFor="fullName">Nombre completo</label>
           <input
             id="fullName"
@@ -49,7 +55,7 @@ export function RegisterPage() {
             autoComplete="name"
           />
         </div>
-        <div>
+        <div className="auth-screen__field">
           <label htmlFor="email">Correo electrónico</label>
           <input
             id="email"
@@ -60,7 +66,7 @@ export function RegisterPage() {
             autoComplete="email"
           />
         </div>
-        <div>
+        <div className="auth-screen__field">
           <label htmlFor="password">Contraseña (mínimo 8 caracteres)</label>
           <input
             id="password"
@@ -72,11 +78,18 @@ export function RegisterPage() {
             autoComplete="new-password"
           />
         </div>
-        <button type="submit" disabled={loading}>
+        <button
+          type="submit"
+          className="button button--primary auth-screen__submit"
+          disabled={loading}
+        >
           {loading ? 'Cargando…' : 'Registrarse'}
         </button>
+
+        <p className="auth-screen__footer">
+          ¿Ya tienes cuenta? <Link to="/login">Iniciar sesión</Link>
+        </p>
       </form>
-      <p>¿Ya tienes cuenta? <Link to="/login">Iniciar sesión</Link></p>
-    </main>
+    </div>
   );
 }
