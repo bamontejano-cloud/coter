@@ -1,12 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-
-export interface PublicUser {
-  id: string;
-  fullName: string;
-  email: string;
-  role: 'therapist' | 'patient';
-}
+import type { PublicUser } from '@coterapeuta/shared';
 
 interface AuthState {
   user: PublicUser | null;
@@ -26,3 +20,5 @@ export const useAuthStore = create<AuthState>()(
     { name: 'auth-storage' }
   )
 );
+
+export type { PublicUser };

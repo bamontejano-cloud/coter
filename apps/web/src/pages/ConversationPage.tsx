@@ -3,36 +3,22 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../store/authStore';
 import { MessageBubble } from '../components/MessageBubble';
-
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
-
-interface Message {
-  id: string;
-  senderId: string;
-  content: string;
-  sentAt: string;
-  read: boolean;
-}
+import { api } from '../lib/apiClient';
+import type { ChatMessage } from '@coterapeuta/shared';
 
 export function ConversationPage() {
   const { conversationId } = useParams<{ conversationId: string }>();
-  const { token, user } = useAuthStore();
+  const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [content, setContent] = useState('');
   const [sendError, setSendError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const { data: messages, isLoading } = useQuery<Message[]>({
+  const { data: messages, isLoading } = useQuery<ChatMessage[]>({
     queryKey: ['messages', conversationId],
-    queryFn: async () => {
-      const res = await fetch(`${API_BASE}/messages/${conversationId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Error al cargar mensajes');
-      return res.json();
-    },
+    queryFn: () => api.get<ChatMessage[]>(`/messages/${conversationId}`),
     enabled: !!conversationId,
-    refetchInterval: 10_000, // poll every 10s
+    refetchInterval: 10_000,
   });
 
   useEffect(() => {
@@ -40,18 +26,8 @@ export function ConversationPage() {
   }, [messages]);
 
   const sendMutation = useMutation({
-    mutationFn: async (text: string) => {
-      const res = await fetch(`${API_BASE}/messages`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversationId, content: text }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message ?? 'Error al enviar mensaje');
-      }
-      return res.json();
-    },
+    mutationFn: (text: string) =>
+      api.post<ChatMessage>('/messages', { conversationId, content: text }),
     onSuccess: () => {
       setContent('');
       queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });

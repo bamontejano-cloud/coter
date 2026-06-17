@@ -1,30 +1,14 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { useAuthStore } from '../store/authStore';
 import { UnreadBadge } from '../components/UnreadBadge';
-
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
-
-interface ConversationSummary {
-  conversationId: string;
-  participantId: string;
-  unreadCount: number;
-  lastMessage?: { content: string; sentAt: string };
-}
+import { api } from '../lib/apiClient';
+import type { ConversationSummary } from '@coterapeuta/shared';
 
 export function MessagesListPage() {
-  const token = useAuthStore((s) => s.token);
-
   const { data: conversations, isLoading, error } = useQuery<ConversationSummary[]>({
     queryKey: ['conversations'],
-    queryFn: async () => {
-      const res = await fetch(`${API_BASE}/messages/conversations`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Error al cargar conversaciones');
-      return res.json();
-    },
-    refetchInterval: 30_000, // poll every 30s
+    queryFn: () => api.get<ConversationSummary[]>('/messages/conversations'),
+    refetchInterval: 30_000,
   });
 
   return (

@@ -1,5 +1,7 @@
+import type { AssignmentStatus } from '@coterapeuta/shared';
+
 interface StatusBadgeProps {
-  status: 'pending' | 'completed';
+  status: AssignmentStatus;
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {

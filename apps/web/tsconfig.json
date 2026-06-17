@@ -11,7 +11,11 @@
     "composite": true,
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "baseUrl": ".",
+    "paths": {
+      "@coterapeuta/shared": ["../../packages/shared/src/index.ts"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"],

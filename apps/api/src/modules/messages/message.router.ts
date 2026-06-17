@@ -1,6 +1,8 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../../middleware/authenticate';
-import { AppError } from '../../lib/errors';
+import { validateBody } from '../../middleware/validateBody';
+import { ah } from '../../lib/asyncHandler';
+import { currentUser } from '../../lib/currentUser';
 import { MessageBody } from './message.schema';
 import { listConversations, getMessages, sendMessage } from './message.service';
 
@@ -9,42 +11,28 @@ export const messageRouter = Router();
 messageRouter.get(
   '/conversations',
   authenticate,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const conversations = await listConversations(req.user!.sub, req.user!.role);
-      res.json(conversations);
-    } catch (err) {
-      next(err);
-    }
-  },
+  ah(async (req, res) => {
+    const user = currentUser(req);
+    const conversations = await listConversations(user.sub, user.role);
+    res.json(conversations);
+  }),
 );
 
 messageRouter.get(
   '/:conversationId',
   authenticate,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const messages = await getMessages(req.user!.sub, req.params.conversationId);
-      res.json(messages);
-    } catch (err) {
-      next(err);
-    }
-  },
+  ah(async (req, res) => {
+    const messages = await getMessages(currentUser(req).sub, req.params.conversationId);
+    res.json(messages);
+  }),
 );
 
 messageRouter.post(
   '/',
   authenticate,
-  async (req: Request, res: Response, next: NextFunction) => {
-    const parsed = MessageBody.safeParse(req.body);
-    if (!parsed.success) {
-      return next(new AppError(422, 'validation_error', parsed.error.errors[0].message));
-    }
-    try {
-      const message = await sendMessage(req.user!.sub, parsed.data);
-      res.status(201).json(message);
-    } catch (err) {
-      next(err);
-    }
-  },
+  validateBody(MessageBody),
+  ah(async (req, res) => {
+    const message = await sendMessage(currentUser(req).sub, req.body);
+    res.status(201).json(message);
+  }),
 );

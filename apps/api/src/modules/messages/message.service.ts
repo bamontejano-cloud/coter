@@ -1,5 +1,7 @@
 import { prisma } from '../../lib/prisma';
-import { AppError } from '../../lib/errors';
+import { Errors } from '../../lib/errors';
+import { requireUserInConversation } from '../../lib/access';
+import type { Role } from '@coterapeuta/shared';
 import type { MessageBodyType } from './message.schema';
 
 export async function getOrCreateConversation(therapistId: string, patientId: string) {
@@ -10,7 +12,7 @@ export async function getOrCreateConversation(therapistId: string, patientId: st
   });
 }
 
-export async function listConversations(userId: string, role: string) {
+export async function listConversations(userId: string, role: Role) {
   const conversations = await prisma.conversation.findMany({
     where: role === 'therapist' ? { therapistId: userId } : { patientId: userId },
     include: {
@@ -35,11 +37,7 @@ export async function listConversations(userId: string, role: string) {
 }
 
 export async function getMessages(userId: string, conversationId: string) {
-  const conversation = await prisma.conversation.findUnique({ where: { id: conversationId } });
-  if (!conversation) throw new AppError(404, 'not_found', 'Recurso no encontrado');
-  if (conversation.therapistId !== userId && conversation.patientId !== userId) {
-    throw new AppError(403, 'forbidden', 'Acceso denegado');
-  }
+  await requireUserInConversation(userId, conversationId);
 
   await prisma.message.updateMany({
     where: { conversationId, receiverId: userId, read: false },
@@ -53,11 +51,7 @@ export async function getMessages(userId: string, conversationId: string) {
 }
 
 export async function sendMessage(senderId: string, body: MessageBodyType) {
-  const conversation = await prisma.conversation.findUnique({ where: { id: body.conversationId } });
-  if (!conversation) throw new AppError(404, 'not_found', 'Recurso no encontrado');
-  if (conversation.therapistId !== senderId && conversation.patientId !== senderId) {
-    throw new AppError(403, 'forbidden', 'Acceso denegado');
-  }
+  const conversation = await requireUserInConversation(senderId, body.conversationId);
 
   const receiverId =
     conversation.therapistId === senderId ? conversation.patientId : conversation.therapistId;

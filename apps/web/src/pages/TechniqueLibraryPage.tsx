@@ -1,47 +1,26 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuthStore } from '../store/authStore';
 import { TechniqueCard } from '../components/TechniqueCard';
-
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
-
-interface Technique {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  patientInstructions?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { api } from '../lib/apiClient';
+import type { Technique } from '@coterapeuta/shared';
 
 export function TechniqueLibraryPage() {
-  const token = useAuthStore((s) => s.token);
   const queryClient = useQueryClient();
   const [categoryFilter, setCategoryFilter] = useState('');
 
   const { data: techniques, isLoading, error } = useQuery<Technique[]>({
     queryKey: ['techniques', categoryFilter],
-    queryFn: async () => {
-      const url = new URL(`${API_BASE}/techniques`);
-      if (categoryFilter) url.searchParams.set('category', categoryFilter);
-      const res = await fetch(url.toString(), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Error al cargar técnicas');
-      return res.json();
+    queryFn: () => {
+      const path = categoryFilter
+        ? `/techniques?category=${encodeURIComponent(categoryFilter)}`
+        : '/techniques';
+      return api.get<Technique[]>(path);
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`${API_BASE}/techniques/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Error al eliminar técnica');
-    },
+    mutationFn: (id: string) => api.delete(`/techniques/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['techniques'] });
     },

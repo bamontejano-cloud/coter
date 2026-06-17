@@ -1,9 +1,8 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuthStore } from '../store/authStore';
-
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+import { api } from '../lib/apiClient';
+import type { Technique } from '@coterapeuta/shared';
 
 interface TechniqueFormData {
   title: string;
@@ -12,21 +11,10 @@ interface TechniqueFormData {
   patientInstructions: string;
 }
 
-interface Technique {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  patientInstructions?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export function TechniqueFormPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id?: string }>();
   const isEdit = !!id;
-  const token = useAuthStore((s) => s.token);
   const queryClient = useQueryClient();
 
   const [form, setForm] = useState<TechniqueFormData>({
@@ -41,11 +29,7 @@ export function TechniqueFormPage() {
   const { data: existing } = useQuery<Technique | null>({
     queryKey: ['technique', id],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/techniques`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Error al cargar técnicas');
-      const all: Technique[] = await res.json();
+      const all = await api.get<Technique[]>('/techniques');
       return all.find((t) => t.id === id) ?? null;
     },
     enabled: isEdit,
@@ -63,24 +47,16 @@ export function TechniqueFormPage() {
   }, [existing]);
 
   const mutation = useMutation({
-    mutationFn: async (data: TechniqueFormData) => {
-      const url = isEdit ? `${API_BASE}/techniques/${id}` : `${API_BASE}/techniques`;
-      const method = isEdit ? 'PUT' : 'POST';
-      const res = await fetch(url, {
-        method,
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: data.title,
-          description: data.description,
-          category: data.category,
-          patientInstructions: data.patientInstructions || undefined,
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message ?? 'Error al guardar técnica');
-      }
-      return res.json();
+    mutationFn: (data: TechniqueFormData) => {
+      const payload = {
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        patientInstructions: data.patientInstructions || undefined,
+      };
+      return isEdit
+        ? api.put<Technique>(`/techniques/${id}`, payload)
+        : api.post<Technique>('/techniques', payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['techniques'] });

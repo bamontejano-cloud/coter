@@ -5,7 +5,11 @@
     "rootDir": "./src",
     "module": "CommonJS",
     "moduleResolution": "node",
-    "composite": true
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@coterapeuta/shared": ["../../packages/shared/src/index.ts"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"],

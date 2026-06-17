@@ -1,8 +1,9 @@
 import { ReactNode } from 'react';
 import { useAuthStore } from '../store/authStore';
+import type { Role } from '@coterapeuta/shared';
 
 interface RoleGuardProps {
-  roles: ('therapist' | 'patient')[];
+  roles: Role[];
   children: ReactNode;
 }
 

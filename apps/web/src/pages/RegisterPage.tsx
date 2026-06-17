@@ -1,8 +1,8 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+import { api } from '../lib/apiClient';
+import type { AuthResponse, Role } from '@coterapeuta/shared';
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -18,20 +18,16 @@ export function RegisterPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName, email, password, role: 'therapist' }),
+      const data = await api.post<AuthResponse>('/auth/register', {
+        fullName,
+        email,
+        password,
+        role: 'therapist' satisfies Role,
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message ?? 'Error al registrarse');
-        return;
-      }
       login(data.token, data.user);
       navigate('/dashboard');
-    } catch {
-      setError('Error de conexión');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al registrarse');
     } finally {
       setLoading(false);
     }
@@ -83,4 +79,4 @@ export function RegisterPage() {
       <p>¿Ya tienes cuenta? <Link to="/login">Iniciar sesión</Link></p>
     </main>
   );
-}
+}

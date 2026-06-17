@@ -1,40 +1,14 @@
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { useAuthStore } from '../store/authStore';
-
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
-
-interface AssignmentSummary {
-  id: string;
-  techniqueId: string;
-  techniqueTitle: string;
-  status: 'pending' | 'completed';
-  assignedAt: string;
-  therapistNotes?: string;
-}
-
-interface PatientProfile {
-  id: string;
-  fullName: string;
-  email: string;
-  linkedAt: string;
-  assignments: AssignmentSummary[];
-  messagesSummary: { unreadCount: number };
-}
+import { api } from '../lib/apiClient';
+import type { PatientProfile } from '@coterapeuta/shared';
 
 export function PatientProfilePage() {
   const { id } = useParams<{ id: string }>();
-  const token = useAuthStore((s) => s.token);
 
   const { data: profile, isLoading, error } = useQuery<PatientProfile>({
     queryKey: ['patient', id],
-    queryFn: async () => {
-      const res = await fetch(`${API_BASE}/patients/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Error al cargar perfil del paciente');
-      return res.json();
-    },
+    queryFn: () => api.get<PatientProfile>(`/patients/${id}`),
     enabled: !!id,
   });
 
@@ -71,7 +45,11 @@ export function PatientProfilePage() {
                 </span>
                 {' — Asignada: '}
                 {new Date(a.assignedAt).toLocaleDateString('es-ES')}
-                {a.therapistNotes && <p><em>Notas: {a.therapistNotes}</em></p>}
+                {a.therapistNotes && (
+                  <p>
+                    <em>Notas: {a.therapistNotes}</em>
+                  </p>
+                )}
               </li>
             ))}
           </ul>

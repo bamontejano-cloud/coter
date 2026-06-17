@@ -1,10 +1,11 @@
 import { z } from 'zod';
+import { ROLE_TUPLE } from '@coterapeuta/shared';
 
 export const RegisterBody = z.object({
   fullName: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(8).max(64),
-  role: z.enum(['therapist', 'patient']),
+  role: z.enum(ROLE_TUPLE),
   invitationCode: z.string().optional(),
 });
 

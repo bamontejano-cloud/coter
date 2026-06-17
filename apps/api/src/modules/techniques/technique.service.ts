@@ -1,9 +1,16 @@
 import { prisma } from '../../lib/prisma';
-import { AppError } from '../../lib/errors';
+import { Errors } from '../../lib/errors';
 import type { TechniqueBodyType } from './technique.schema';
 
+async function findOwnedOr404(therapistId: string, techniqueId: string) {
+  const technique = await prisma.technique.findUnique({ where: { id: techniqueId } });
+  if (!technique || technique.deletedAt) throw Errors.notFound();
+  if (technique.therapistId !== therapistId) throw Errors.forbidden();
+  return technique;
+}
+
 export async function createTechnique(therapistId: string, body: TechniqueBodyType) {
-  const technique = await prisma.technique.create({
+  return prisma.technique.create({
     data: {
       therapistId,
       title: body.title,
@@ -12,7 +19,6 @@ export async function createTechnique(therapistId: string, body: TechniqueBodyTy
       patientInstructions: body.patientInstructions,
     },
   });
-  return technique;
 }
 
 export async function listTechniques(therapistId: string, category?: string) {
@@ -31,14 +37,7 @@ export async function updateTechnique(
   techniqueId: string,
   body: TechniqueBodyType,
 ) {
-  const existing = await prisma.technique.findUnique({ where: { id: techniqueId } });
-  if (!existing || existing.deletedAt) {
-    throw new AppError(404, 'not_found', 'Recurso no encontrado');
-  }
-  if (existing.therapistId !== therapistId) {
-    throw new AppError(403, 'forbidden', 'Acceso denegado');
-  }
-
+  await findOwnedOr404(therapistId, techniqueId);
   return prisma.technique.update({
     where: { id: techniqueId },
     data: {
@@ -51,14 +50,7 @@ export async function updateTechnique(
 }
 
 export async function deleteTechnique(therapistId: string, techniqueId: string) {
-  const existing = await prisma.technique.findUnique({ where: { id: techniqueId } });
-  if (!existing || existing.deletedAt) {
-    throw new AppError(404, 'not_found', 'Recurso no encontrado');
-  }
-  if (existing.therapistId !== therapistId) {
-    throw new AppError(403, 'forbidden', 'Acceso denegado');
-  }
-
+  await findOwnedOr404(therapistId, techniqueId);
   await prisma.technique.update({
     where: { id: techniqueId },
     data: { deletedAt: new Date() },

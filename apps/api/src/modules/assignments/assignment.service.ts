@@ -1,26 +1,18 @@
 import { prisma } from '../../lib/prisma';
-import { AppError } from '../../lib/errors';
+import { Errors } from '../../lib/errors';
+import { assertTherapistOwnsPatient } from '../../lib/access';
+import type { Role } from '@coterapeuta/shared';
+import type { AssignmentBodyType } from './assignment.schema';
 
-interface AssignmentBody {
-  techniqueId: string;
-  patientId: string;
-  therapistNotes?: string;
-}
+const TECHNIQUE_SELECT = { title: true } as const;
 
-export async function createAssignment(therapistId: string, body: AssignmentBody) {
-  // Verify technique belongs to therapist and is not deleted
+export async function createAssignment(therapistId: string, body: AssignmentBodyType) {
   const technique = await prisma.technique.findUnique({ where: { id: body.techniqueId } });
   if (!technique || technique.deletedAt || technique.therapistId !== therapistId) {
-    throw new AppError(403, 'forbidden', 'Acceso denegado');
+    throw Errors.forbidden();
   }
 
-  // Verify patient is linked to therapist
-  const link = await prisma.therapistPatient.findUnique({
-    where: { therapistId_patientId: { therapistId, patientId: body.patientId } },
-  });
-  if (!link) {
-    throw new AppError(403, 'forbidden', 'Acceso denegado');
-  }
+  await assertTherapistOwnsPatient(therapistId, body.patientId);
 
   return prisma.assignment.create({
     data: {
@@ -30,36 +22,32 @@ export async function createAssignment(therapistId: string, body: AssignmentBody
       therapistNotes: body.therapistNotes,
       status: 'pending',
     },
-    include: {
-      technique: { select: { title: true } },
-    },
+    include: { technique: { select: TECHNIQUE_SELECT } },
   });
 }
 
 export async function listAssignments(
   requesterId: string,
-  role: string,
+  role: Role,
   patientIdFilter?: string,
 ) {
   if (role === 'therapist') {
-    if (!patientIdFilter) throw new AppError(400, 'validation_error', 'patientId es requerido');
-    // Verify the patient is linked to this therapist
-    const link = await prisma.therapistPatient.findUnique({
-      where: { therapistId_patientId: { therapistId: requesterId, patientId: patientIdFilter } },
-    });
-    if (!link) throw new AppError(403, 'forbidden', 'Acceso denegado');
+    if (!patientIdFilter) {
+      throw Errors.validation('patientId es requerido');
+    }
+    await assertTherapistOwnsPatient(requesterId, patientIdFilter);
 
     return prisma.assignment.findMany({
       where: { patientId: patientIdFilter, therapistId: requesterId },
-      include: { technique: { select: { title: true } } },
-      orderBy: { assignedAt: 'desc' },
-    });
-  } else {
-    // Patient: only see their own assignments
-    return prisma.assignment.findMany({
-      where: { patientId: requesterId },
-      include: { technique: { select: { title: true } } },
+      include: { technique: { select: TECHNIQUE_SELECT } },
       orderBy: { assignedAt: 'desc' },
     });
   }
+
+  // Patient: only their own assignments
+  return prisma.assignment.findMany({
+    where: { patientId: requesterId },
+    include: { technique: { select: TECHNIQUE_SELECT } },
+    orderBy: { assignedAt: 'desc' },
+  });
 }

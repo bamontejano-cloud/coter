@@ -1,8 +1,9 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import type { Role } from '@coterapeuta/shared';
 
 interface ProtectedRouteProps {
-  allowedRoles?: ('therapist' | 'patient')[];
+  allowedRoles?: Role[];
 }
 
 export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {

@@ -1,8 +1,9 @@
 import jwt from 'jsonwebtoken';
+import type { Role } from '@coterapeuta/shared';
 
 export interface JwtPayload {
   sub: string;    // user id
-  role: string;   // 'therapist' | 'patient'
+  role: Role;     // 'therapist' | 'patient'
   email: string;
 }
 
@@ -15,4 +16,8 @@ export function signToken(payload: JwtPayload): string {
 
 export function verifyToken(token: string): JwtPayload {
   return jwt.verify(token, JWT_SECRET) as JwtPayload;
+}
+
+export function toJwtPayload(user: { id: string; role: string; email: string }): JwtPayload {
+  return { sub: user.id, role: user.role as Role, email: user.email };
 }

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
 import jwt from 'jsonwebtoken';
 import { signToken } from '../lib/jwt';
+import type { JwtPayload } from '../lib/jwt';
 
 const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret-at-least-32-bytes-long!!';
 const EIGHT_HOURS_IN_SECONDS = 8 * 60 * 60;
@@ -21,7 +22,7 @@ describe('Feature: coterapeuta-app, Property 3: JWT emitido contiene expiración
         }),
         (payload) => {
           const before = Math.floor(Date.now() / 1000);
-          const token = signToken(payload);
+          const token = signToken(payload as JwtPayload);
           const after = Math.floor(Date.now() / 1000);
 
           const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;

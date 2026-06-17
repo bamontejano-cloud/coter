@@ -1,6 +1,8 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../../middleware/authenticate';
 import { requireRole } from '../../middleware/requireRole';
+import { ah } from '../../lib/asyncHandler';
+import { currentUser } from '../../lib/currentUser';
 import { listPatients, getPatientProfile } from './patient.service';
 
 export const patientRouter = Router();
@@ -10,14 +12,10 @@ patientRouter.get(
   '/',
   authenticate,
   requireRole('therapist'),
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const patients = await listPatients(req.user!.sub);
-      res.json(patients);
-    } catch (err) {
-      next(err);
-    }
-  }
+  ah(async (req, res) => {
+    const patients = await listPatients(currentUser(req).sub);
+    res.json(patients);
+  }),
 );
 
 // GET /patients/:id — therapist only, own patients
@@ -25,12 +23,8 @@ patientRouter.get(
   '/:id',
   authenticate,
   requireRole('therapist'),
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const profile = await getPatientProfile(req.user!.sub, req.params.id);
-      res.json(profile);
-    } catch (err) {
-      next(err);
-    }
-  }
+  ah(async (req, res) => {
+    const profile = await getPatientProfile(currentUser(req).sub, req.params.id);
+    res.json(profile);
+  }),
 );

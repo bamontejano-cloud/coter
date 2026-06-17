@@ -1,5 +1,5 @@
 import { prisma } from '../../lib/prisma';
-import { AppError } from '../../lib/errors';
+import { Errors } from '../../lib/errors';
 
 export async function listNotifications(therapistId: string) {
   return prisma.notification.findMany({
@@ -9,14 +9,10 @@ export async function listNotifications(therapistId: string) {
 }
 
 export async function markAsRead(therapistId: string, notificationId: string) {
-  const notification = await prisma.notification.findUnique({
-    where: { id: notificationId },
-  });
-
+  const notification = await prisma.notification.findUnique({ where: { id: notificationId } });
   if (!notification || notification.therapistId !== therapistId) {
-    throw new AppError(403, 'forbidden', 'Acceso denegado');
+    throw Errors.forbidden();
   }
-
   await prisma.notification.update({
     where: { id: notificationId },
     data: { read: true },

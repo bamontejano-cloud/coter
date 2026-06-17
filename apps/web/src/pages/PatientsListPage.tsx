@@ -1,46 +1,19 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useAuthStore } from '../store/authStore';
-
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
-
-interface PatientSummary {
-  id: string;
-  fullName: string;
-  email: string;
-  linkedAt: string;
-}
-
-function usePatients() {
-  const token = useAuthStore((s) => s.token);
-  return useQuery<PatientSummary[]>({
-    queryKey: ['patients'],
-    queryFn: async () => {
-      const res = await fetch(`${API_BASE}/patients`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Error al cargar pacientes');
-      return res.json();
-    },
-  });
-}
+import { api } from '../lib/apiClient';
+import type { PatientSummary, InvitationCreateResponse } from '@coterapeuta/shared';
 
 export function PatientsListPage() {
-  const { data: patients, isLoading, error } = usePatients();
-  const token = useAuthStore((s) => s.token);
+  const { data: patients, isLoading, error } = useQuery<PatientSummary[]>({
+    queryKey: ['patients'],
+    queryFn: () => api.get<PatientSummary[]>('/patients'),
+  });
   const [invitationCode, setInvitationCode] = useState<string | null>(null);
   const [invitationError, setInvitationError] = useState<string | null>(null);
 
   const generateInvitation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`${API_BASE}/invitations`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      });
-      if (!res.ok) throw new Error('Error al generar invitación');
-      return res.json() as Promise<{ code: string; expiresAt: string }>;
-    },
+    mutationFn: () => api.post<InvitationCreateResponse>('/invitations'),
     onSuccess: (data) => {
       setInvitationCode(data.code);
       setInvitationError(null);

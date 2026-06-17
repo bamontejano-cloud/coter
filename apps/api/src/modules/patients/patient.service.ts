@@ -1,5 +1,5 @@
 import { prisma } from '../../lib/prisma';
-import { AppError } from '../../lib/errors';
+import { Errors } from '../../lib/errors';
 
 export async function listPatients(therapistId: string) {
   const links = await prisma.therapistPatient.findMany({
@@ -21,44 +21,38 @@ export async function listPatients(therapistId: string) {
 }
 
 export async function getPatientProfile(therapistId: string, patientId: string) {
+  // Access check first: a therapist without a link must never reach the
+  // assignments or conversation queries (security + side-channel contract).
   const link = await prisma.therapistPatient.findUnique({
     where: { therapistId_patientId: { therapistId, patientId } },
-    include: {
-      patient: {
-        select: { id: true, fullName: true, email: true },
+    include: { patient: { select: { id: true, fullName: true, email: true } } },
+  });
+  if (!link) throw Errors.forbidden();
+
+  const [assignments, conversation] = await Promise.all([
+    prisma.assignment.findMany({
+      where: { patientId, therapistId },
+      select: {
+        id: true,
+        techniqueId: true,
+        technique: { select: { title: true } },
+        status: true,
+        assignedAt: true,
+        therapistNotes: true,
       },
-    },
-  });
-
-  if (!link) {
-    throw new AppError(403, 'forbidden', 'Acceso denegado');
-  }
-
-  const assignments = await prisma.assignment.findMany({
-    where: { patientId, therapistId },
-    select: {
-      id: true,
-      techniqueId: true,
-      technique: { select: { title: true } },
-      status: true,
-      assignedAt: true,
-      therapistNotes: true,
-    },
-    orderBy: { assignedAt: 'desc' },
-  });
-
-  const conversation = await prisma.conversation.findUnique({
-    where: { therapistId_patientId: { therapistId, patientId } },
-    include: {
-      _count: {
-        select: {
-          messages: {
-            where: { read: false, receiverId: therapistId },
+      orderBy: { assignedAt: 'desc' },
+    }),
+    prisma.conversation.findUnique({
+      where: { therapistId_patientId: { therapistId, patientId } },
+      include: {
+        _count: {
+          select: {
+            messages: { where: { read: false, receiverId: therapistId } },
           },
         },
       },
-    },
-  });
+    }),
+  ]);
 
   return {
     id: link.patient.id,

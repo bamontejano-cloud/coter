@@ -5,6 +5,7 @@ import request from 'supertest';
 import { signToken } from '../lib/jwt';
 import { authenticate } from '../middleware/authenticate';
 import { requireRole } from '../middleware/requireRole';
+import { errorHandler } from '../lib/errorHandler';
 
 function buildTestApp() {
   const app = express();
@@ -16,9 +17,7 @@ function buildTestApp() {
   app.get('/patient-only', authenticate, requireRole('patient'),
     (_req: Request, res: Response) => res.json({ ok: true }));
 
-  app.use((err: any, _req: Request, res: Response, _next: any) => {
-    res.status(err.status ?? 500).json({ error: err.code, message: err.message });
-  });
+  app.use(errorHandler);
   return app;
 }
 

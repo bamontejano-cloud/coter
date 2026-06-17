@@ -1,64 +1,35 @@
 import { useState, FormEvent } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuthStore } from '../store/authStore';
 import { StatusBadge } from '../components/StatusBadge';
+import { api } from '../lib/apiClient';
+import type { Assignment, RecordEntry } from '@coterapeuta/shared';
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
-
-interface AssignmentDetail {
-  id: string;
-  techniqueId: string;
+interface AssignmentWithTitle extends Assignment {
   techniqueTitle: string;
-  status: 'pending' | 'completed';
-  assignedAt: string;
-  therapistNotes?: string;
-  technique?: {
-    title: string;
-    description: string;
-    patientInstructions?: string;
-  };
 }
 
 export function AssignmentDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const token = useAuthStore((s) => s.token);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [response, setResponse] = useState('');
   const [responseError, setResponseError] = useState<string | null>(null);
 
-  const { data: assignment, isLoading, error } = useQuery<AssignmentDetail>({
+  const { data: assignment, isLoading, error } = useQuery<AssignmentWithTitle | null>({
     queryKey: ['assignment', id],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/assignments`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Error al cargar asignaciones');
-      const all = await res.json();
-      const found = all.find((a: any) => a.id === id);
-      if (!found) throw new Error('Asignación no encontrada');
-      return {
-        ...found,
-        techniqueTitle: found.technique?.title ?? found.techniqueTitle,
-      };
+      const all = await api.get<Assignment[]>('/assignments');
+      const found = all.find((a) => a.id === id);
+      if (!found) return null;
+      return { ...found, techniqueTitle: found.technique?.title ?? '' };
     },
     enabled: !!id,
   });
 
   const submitRecord = useMutation({
-    mutationFn: async (responseText: string) => {
-      const res = await fetch(`${API_BASE}/records`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assignmentId: id, response: responseText }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message ?? 'Error al enviar el registro');
-      }
-      return res.json();
-    },
+    mutationFn: (responseText: string) =>
+      api.post<RecordEntry>('/records', { assignmentId: id, response: responseText }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
       queryClient.invalidateQueries({ queryKey: ['assignment', id] });
@@ -86,7 +57,7 @@ export function AssignmentDetailPage() {
   return (
     <main>
       <Link to="/assignments">← Volver a asignaciones</Link>
-      <h1>{assignment.techniqueTitle ?? assignment.technique?.title}</h1>
+      <h1>{assignment.techniqueTitle || assignment.technique?.title}</h1>
       <StatusBadge status={assignment.status} />
       <p>Asignada: {new Date(assignment.assignedAt).toLocaleDateString('es-ES')}</p>
 
@@ -94,20 +65,6 @@ export function AssignmentDetailPage() {
         <section aria-label="Notas del terapeuta">
           <h2>Notas del terapeuta</h2>
           <p>{assignment.therapistNotes}</p>
-        </section>
-      )}
-
-      {assignment.technique?.description && (
-        <section aria-label="Descripción de la técnica">
-          <h2>Descripción</h2>
-          <p>{assignment.technique.description}</p>
-        </section>
-      )}
-
-      {assignment.technique?.patientInstructions && (
-        <section aria-label="Instrucciones">
-          <h2>Instrucciones</h2>
-          <p>{assignment.technique.patientInstructions}</p>
         </section>
       )}
 

@@ -1,6 +1,6 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
-import { AppError } from './lib/errors';
+import { errorHandler } from './lib/errorHandler';
 import { authRouter } from './modules/auth/auth.router';
 import { invitationRouter } from './modules/invitations/invitation.router';
 import { patientRouter } from './modules/patients/patient.router';
@@ -51,10 +51,4 @@ app.use('/messages', messageRouter);
 app.use('/notifications', notificationRouter);
 
 // Global error handler
-app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-  if (err instanceof AppError) {
-    return res.status(err.status).json({ error: err.code, message: err.message });
-  }
-  console.error('Unhandled error:', err);
-  return res.status(500).json({ error: 'internal_error', message: 'Error interno del servidor' });
-});
+app.use(errorHandler);

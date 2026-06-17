@@ -1,8 +1,8 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+import { api } from '../lib/apiClient';
+import type { AuthResponse, Role } from '@coterapeuta/shared';
 
 export function RegisterWithInvitationPage() {
   const navigate = useNavigate();
@@ -19,20 +19,17 @@ export function RegisterWithInvitationPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName, email, password, role: 'patient', invitationCode }),
+      const data = await api.post<AuthResponse>('/auth/register', {
+        fullName,
+        email,
+        password,
+        role: 'patient' satisfies Role,
+        invitationCode,
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message ?? 'Error al registrarse');
-        return;
-      }
       login(data.token, data.user);
       navigate('/dashboard');
-    } catch {
-      setError('Error de conexión');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al registrarse');
     } finally {
       setLoading(false);
     }

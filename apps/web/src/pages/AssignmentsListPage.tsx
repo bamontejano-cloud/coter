@@ -1,34 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { useAuthStore } from '../store/authStore';
 import { AssignmentCard } from '../components/AssignmentCard';
-
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
-
-interface Assignment {
-  id: string;
-  techniqueId: string;
-  techniqueTitle: string;
-  status: 'pending' | 'completed';
-  assignedAt: string;
-  therapistNotes?: string;
-}
+import { api } from '../lib/apiClient';
+import type { Assignment } from '@coterapeuta/shared';
 
 export function AssignmentsListPage() {
-  const token = useAuthStore((s) => s.token);
-
   const { data: assignments, isLoading, error } = useQuery<Assignment[]>({
     queryKey: ['assignments'],
-    queryFn: async () => {
-      const res = await fetch(`${API_BASE}/assignments`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Error al cargar asignaciones');
-      const data = await res.json();
-      return data.map((a: any) => ({
-        ...a,
-        techniqueTitle: a.technique?.title ?? a.techniqueTitle,
-      }));
-    },
+    queryFn: () => api.get<Assignment[]>('/assignments'),
   });
 
   return (
@@ -39,16 +17,24 @@ export function AssignmentsListPage() {
       {assignments && assignments.length === 0 && (
         <p>No tienes asignaciones todavía.</p>
       )}
-      {assignments && assignments.map((a) => (
-        <AssignmentCard
-          key={a.id}
-          id={a.id}
-          techniqueTitle={a.techniqueTitle}
-          status={a.status}
-          assignedAt={a.assignedAt}
-          therapistNotes={a.therapistNotes}
-        />
-      ))}
+      {assignments && assignments.length > 0 && (
+        <ul aria-label="Lista de asignaciones" style={{ listStyle: 'none', padding: 0 }}>
+          {assignments.map((a) => (
+            <li key={a.id}>
+              <AssignmentCard
+                assignment={{
+                  id: a.id,
+                  techniqueId: a.techniqueId,
+                  techniqueTitle: a.technique?.title ?? '',
+                  status: a.status,
+                  assignedAt: a.assignedAt,
+                  therapistNotes: a.therapistNotes ?? null,
+                }}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
     </main>
   );
 }

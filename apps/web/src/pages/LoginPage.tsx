@@ -1,8 +1,8 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+import { api } from '../lib/apiClient';
+import type { AuthResponse } from '@coterapeuta/shared';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -17,20 +17,11 @@ export function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message ?? 'Error al iniciar sesión');
-        return;
-      }
+      const data = await api.post<AuthResponse>('/auth/login', { email, password });
       login(data.token, data.user);
       navigate('/dashboard');
-    } catch {
-      setError('Error de conexión');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al iniciar sesión');
     } finally {
       setLoading(false);
     }
